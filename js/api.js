@@ -2,10 +2,15 @@
    Base: https://oss.exercisedb.dev/api/v1
    Handles: timeout, jittered backoff on 403/429/5xx, caching, single-flight,
    pagination no-progress guard, dedupe. Error details carry endpoint + status
-   + a body snippet (mirrors a production REST client's diagnostics). */
+   + a body snippet (mirrors a production REST client's diagnostics).
+
+   In plain terms: this is the only file that talks to the exercise API. It
+   hides the messy parts — slow replies, rate limits, repeated requests — from
+   the rest of the app. */
 const PitchAPI = (() => {
   'use strict';
 
+  // Where the API lives and how patient we are with it.
   const BASE = 'https://oss.exercisedb.dev/api/v1';
   const PAGE_SIZE = 25;          // API hard cap (silently clamps anything above)
   const TIMEOUT_MS = 8000;
@@ -18,6 +23,7 @@ const PitchAPI = (() => {
   /** Origin of the most recent completed request: 'live' | 'cache' */
   let lastSource = 'live';
 
+  // Our own error type: a friendly message for users, technical detail for us.
   class ApiError extends Error {
     constructor(message, code = 'UNKNOWN', status = 0, detail = '') {
       super(message);
@@ -31,6 +37,7 @@ const PitchAPI = (() => {
   }
 
   /* ---------- storage (safe: falls back to memory) ---------- */
+  // If browser storage is blocked or full, keep answers in memory instead.
   const memStore = {};
   const hasLS = (() => {
     try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); return true; }
@@ -49,6 +56,7 @@ const PitchAPI = (() => {
   }
 
   /* ---------- response cache ---------- */
+  // Reuse an answer only if it is fresh enough and from the current format.
   function cacheRead(key) {
     try {
       const raw = storeGet(CACHE_KEY + ':' + key);
@@ -63,6 +71,8 @@ const PitchAPI = (() => {
     catch (e) { /* ignore */ }
   }
 
+  // Pause between retries. Jitter adds a little randomness so many users do
+  // not all retry at the exact same moment.
   function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
   function jitter(ms) { return ms + Math.floor(Math.random() * ms * 0.2); }
 
@@ -79,6 +89,7 @@ const PitchAPI = (() => {
 
   /* ---------- core request ---------- */
   async function request(path, params = {}, { cache = false, retries = 2 } = {}) {
+    // Build the full URL, then look in the cache and in-flight list first.
     const url = new URL(BASE + path);
     for (const [k, v] of Object.entries(params)) {
       if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
@@ -97,6 +108,7 @@ const PitchAPI = (() => {
       let attempt = 0;
       /* eslint-disable no-constant-condition */
       while (true) {
+        // Try, then retry with a short pause if the API is temporarily unhappy.
         attempt++;
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -118,6 +130,7 @@ const PitchAPI = (() => {
         }
         clearTimeout(timer);
 
+        // The API asked us to slow down — wait for the time it requested.
         if (res.status === 429 && attempt < maxTries) {
           const wait = Math.min(Number(res.headers.get('Retry-After')) * 1000 || 6000, 15000);
           await sleep(wait);
@@ -131,6 +144,7 @@ const PitchAPI = (() => {
         let body = null;
         try { body = await res.json(); } catch (e) { /* non-JSON body */ }
 
+        // Turn HTTP failures into clear errors with a useful detail line.
         if (!res.ok) {
           const err = (body && body.error) || {};
           const detail = describe(label, res.status, body);
@@ -158,6 +172,7 @@ const PitchAPI = (() => {
   }
 
   /* ---------- helpers ---------- */
+  // Remove duplicate exercises — the same move can appear in more than one page.
   function dedupe(items) {
     const seen = new Set();
     const out = [];
@@ -170,6 +185,7 @@ const PitchAPI = (() => {
     return out;
   }
 
+  // Check the API envelope before using its data.
   function unwrap(body, what) {
     if (!body || body.success !== true || body.data === undefined) {
       throw new ApiError('The API returned an unexpected response.', 'BAD_RESPONSE', 0,
@@ -187,6 +203,7 @@ const PitchAPI = (() => {
     PAGE_SIZE,
 
     /** Health check — note: no `success` envelope on this endpoint */
+    // Quick health check — this endpoint has a different response shape.
     async liveness() {
       const body = await request('/liveness', {}, { retries: 1 });
       if (!body || !body.status) throw new ApiError('Liveness check failed.', 'BAD_RESPONSE');
@@ -194,6 +211,7 @@ const PitchAPI = (() => {
     },
 
     /** Paged, filtered list. Returns { items, meta } */
+    // Main list call used by the library and by goal planning.
     async fetchPage(params = {}) {
       const query = {
         name: params.name,
@@ -218,12 +236,14 @@ const PitchAPI = (() => {
     },
 
     /** Fuzzy search — light records only { exerciseId, name, gifUrl } */
+    // Search gives small records — enough for a card and to open full details.
     async search(term, threshold) {
       const body = await request('/exercises/search', { search: term, threshold: threshold || 0.5 }, { cache: true });
       return dedupe(unwrap(body, 'search'));
     },
 
     /** Full detail for one exercise */
+    // One exercise with instructions, secondary muscles and related moves.
     async getExercise(id) {
       if (!id) throw new ApiError('No exercise id given.', 'BAD_REQUEST', 400);
       const body = await request('/exercises/' + encodeURIComponent(id), {}, { cache: true });
@@ -231,6 +251,7 @@ const PitchAPI = (() => {
     },
 
     /** Dropdown lists (cached 24h) */
+    // These lists do not change often, so one API call serves the whole day.
     async bodyParts() {
       const body = await request('/bodyparts', {}, { cache: true });
       return unwrap(body, 'bodyparts');
@@ -248,6 +269,7 @@ const PitchAPI = (() => {
     /** 'live' | 'cache' — where the most recent completed call got its data */
     getSource: () => lastSource,
     /** Warm cache / clear it */
+    // Let the user forget all saved API answers if they want fresh data.
     clearCache() {
       try {
         const rm = [];
