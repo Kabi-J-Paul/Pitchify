@@ -1,7 +1,10 @@
-/* Pitchify — UI helpers: icons, escaping, cards, skeletons, toasts */
+/* Pitchify — UI helpers: icons, escaping, cards, skeletons, toasts
+
+   In plain terms: small shared drawing helpers so the other files stay readable. */
 const UI = (() => {
   'use strict';
 
+  // Escape text before putting it into HTML, so exercise names cannot break the page.
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -9,6 +12,7 @@ const UI = (() => {
   }
 
   /* ---------- icons ---------- */
+  // Icon shapes used across the app.
   const PATHS = {
     bolt: '<path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12L13 2z"/>',
     pulse: '<path d="M3 12h4l2.5-7 4 14L16 12h5"/>',
@@ -25,15 +29,18 @@ const UI = (() => {
     ball: '<circle cx="12" cy="12" r="9"/><path d="M12 6.5l3.4 2.5-1.3 4h-4.2l-1.3-4L12 6.5zM4.5 10.5l3.7 1M19.5 10.5l-3.7 1M8 19l1.5-4M16 19l-1.5-4"/>',
   };
 
+  // Build an SVG icon; fall back to the ball icon if the name is unknown.
   function icon(name, size = 20, extra = '') {
     const d = PATHS[name] || PATHS.ball;
     return '<svg class="ic ' + extra + '" viewBox="0 0 24 24" width="' + size + '" height="' + size +
       '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
   }
 
+  // Colour used for each goal's accent.
   const ACCENTS = { lime: 'var(--lime)', green: 'var(--green)', sand: 'var(--sand)', mint: 'var(--mint)', violet: 'var(--violet)' };
 
   /* ---------- formatting ---------- */
+  // Turn API names into readable labels and seconds into m:ss.
   function titleCase(s) {
     return String(s || '').replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
   }
@@ -43,6 +50,7 @@ const UI = (() => {
   }
 
   /* ---------- media ---------- */
+  // Show the exercise GIF, or a labelled tile if the API has no GIF.
   function mediaHtml(item) {
     const alt = esc(titleCase(item.name)) + ' exercise demonstration';
     if (item.gifUrl) {
@@ -52,6 +60,7 @@ const UI = (() => {
   }
 
   /** Swap broken GIFs for a clean placeholder tile */
+  // If a GIF fails to load, replace it with a simple placeholder.
   function bindImgErrors(root) {
     (root || document).querySelectorAll('.ex-media img, .sheet-media img, .s-thumb img').forEach(img => {
       img.addEventListener('error', () => {
@@ -64,6 +73,7 @@ const UI = (() => {
   }
 
   /* ---------- exercise card ---------- */
+  // Build one exercise card for the library grid.
   function exerciseCard(item, opts = {}) {
     const fav = !!opts.fav;
     const bp = (item.bodyParts || []).slice(0, 1).map(titleCase).join('');
@@ -87,6 +97,7 @@ const UI = (() => {
       '</div>';
   }
 
+  // Placeholder cards shown while data is loading.
   function skeletons(n = 8) {
     let out = '';
     for (let i = 0; i < n; i++) {
@@ -97,6 +108,7 @@ const UI = (() => {
   }
 
   /* ---------- toasts ---------- */
+  // A small message that fades away; it can also include a retry button.
   function toast(message, opts = {}) {
     const host = document.getElementById('toasts');
     if (!host) return () => {};
@@ -125,12 +137,14 @@ const UI = (() => {
   }
 
   /* ---------- theme ---------- */
+  // Switch light/dark theme and remember the choice.
   function applyTheme(theme) {
     document.documentElement.dataset.theme = theme;
     try { localStorage.setItem('pitchify:theme', theme); } catch (e) { /* ignore */ }
   }
 
   /* ---------- served-by badge (same-origin header read) ---------- */
+  // Read the load balancer header so the footer can show which web server replied.
   async function readServedBy() {
     const el = document.getElementById('served-by');
     const footer = document.getElementById('site-footer');
