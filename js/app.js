@@ -6,6 +6,7 @@
   const $$ = sel => Array.from(document.querySelectorAll(sel));
 
   /* ================= state ================= */
+  // Everything the app needs to remember while it is open lives in S.
   const S = {
     profile: null,          // { goal, equipment, level }
     draft: { goal: null, equipment: null, level: null },
@@ -28,6 +29,7 @@
   };
 
   /* ================= storage ================= */
+  // localStorage helpers never throw, even if storage is full or blocked.
   const LS = {
     get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
     set(key, val) { try { localStorage.setItem(key, val); } catch (e) { /* quota */ } },
@@ -47,6 +49,7 @@
     return new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' }).toUpperCase();
   }
 
+  // Restore saved choices and settings; completed exercises are today-only.
   function loadPersisted() {
     S.profile = LS.json('pitchify:profile', null);
     S.draft = Object.assign({ goal: null, equipment: null, level: null }, S.profile || {});
@@ -68,6 +71,7 @@
   }
 
   /* ================= pool + session ================= */
+  // Keep a pool of exercises so rebuilding the plan does not hit the API every time.
   async function ensurePool(force) {
     if (!S.profile) return [];
     const key = S.profile.goal + ':' + S.profile.equipment;
@@ -85,10 +89,12 @@
     return items;
   }
 
+  // Same date + same answers = same seed, so the daily session stays stable.
   function sessionSeed(extra) {
     return [todayKey(), S.profile.goal, S.profile.equipment, S.profile.level, extra || ''].join('|');
   }
 
+  // Build today's six exercises, or repair an older saved session if needed.
   async function ensureSession() {
     const pool = await ensurePool(false);
     const today = todayKey();
@@ -125,8 +131,10 @@
   }
 
   /* ================= views / router ================= */
+  // Hash routes (#/plan, #/browse, #/setup) decide which screen is visible.
   const VIEWS = { onboarding: '#view-onboarding', plan: '#view-plan', browse: '#view-browse', detail: '#view-detail' };
 
+  // Hide every screen, then show just the one we want.
   function showView(name) {
     Object.values(VIEWS).forEach(sel => { const el = $(sel); if (el) el.hidden = true; });
     const el = $(VIEWS[name]);
@@ -151,6 +159,7 @@
     }
   }
 
+  // An exercise URL opens the detail panel over whatever screen was open.
   function route() {
     const hash = location.hash || '';
     const m = hash.match(/^#\/exercise\/(.+)$/);
@@ -173,6 +182,7 @@
   }
 
   /* ================= onboarding ================= */
+  // Render the three setup questions from the goal/equipment/level data.
   function renderOnboarding() {
     const goalHost = $('#goal-grid');
     const eqHost = $('#equip-grid');
@@ -209,6 +219,7 @@
   }
 
   let currentStep = 1;
+  // Only one step is visible at a time; the dots show how far along we are.
   function showStep(n) {
     currentStep = n;
     $$('.onb-step').forEach(el => { el.hidden = Number(el.dataset.step) !== n; });
@@ -229,6 +240,7 @@
     row.hidden = $$('.onb-back-row .back-btn').every(b => b.hidden);
   }
 
+  // Jump straight to a chosen setup step, keeping the current answers.
   function openSetup(step) {
     if (S.profile) S.draft = Object.assign({}, S.profile);
     showStep(step || 1);
@@ -236,6 +248,7 @@
   }
 
   /* ================= plan ================= */
+  // Draw today's session, coach notes, progress ring and rest timer.
   async function renderPlan() {
     const listHost = $('#session-list');
     const emptyHost = $('#session-empty');
@@ -337,6 +350,7 @@
     $('#timer-hint').textContent = 'Suggested rest for ' + goal.name.toLowerCase() + ': ' + guide.rest + 's.';
   }
 
+  // Update the circle and reveal the completion card after the last checkbox.
   function updateProgress() {
     const ids = (S.session && S.session.ids) || [];
     const done = ids.filter(id => S.completed.has(id)).length;
@@ -364,6 +378,7 @@
     }
   }
 
+  // After the final tick, scroll the completion card into view automatically.
   function revealCompletePanel() {
     const panel = $('#session-complete');
     if (!panel || panel.hidden) return;
@@ -374,6 +389,7 @@
   }
 
   /* ================= timer ================= */
+  // A simple count-down timer with start, pause and reset.
   const Timer = {
     total: 60, remaining: 60, running: false, endAt: 0, iv: null,
     set(total) {
@@ -424,8 +440,10 @@
   function resetTimer(total) { Timer.reset(total); }
 
   /* ================= browse ================= */
+  // Search is delayed briefly so we do not call the API on every keystroke.
   let searchTimer = null;
 
+  // Load the filter drop-down lists from the API once.
   async function fillSelects() {
     try {
       const [bps, eqs, mss] = await Promise.all([
@@ -492,6 +510,7 @@
     }
   }
 
+  // Fetch one page of exercises and paint the grid.
   async function loadBrowse(reset) {
     const b = S.browse;
     if (b.loading) return;
@@ -552,6 +571,7 @@
     }
   }
 
+  // Render the current page plus the "load more" button.
   function paintBrowse() {
     const b = S.browse;
     const grid = $('#exercise-grid');
@@ -599,6 +619,7 @@
     loadBtn.textContent = 'Load more exercises';
   }
 
+  // Reset the library back to its default view.
   function clearFilters() {
     const b = S.browse;
     b.query = ''; b.goal = null; b.bodyPart = ''; b.equip = ''; b.muscle = '';
@@ -615,6 +636,8 @@
   }
 
   /* ================= detail sheet ================= */
+  // Open a side panel with the GIF, steps, muscles and related exercises.
+  // Load one exercise's full detail and open the side panel.
   async function openDetail(id) {
     S.detailId = id;
     const sheet = $('#sheet');
@@ -724,6 +747,8 @@
   }
 
   /* ================= favorites ================= */
+  // Save starred exercises locally so they survive a refresh.
+  // Add or remove an exercise from saved favorites.
   async function toggleFavorite(id, btn) {
     const was = S.favorites.has(id);
     if (was) {
@@ -755,6 +780,7 @@
   }
 
   /* ================= banner ================= */
+  // Show connection problems at the top, with an optional retry button.
   function showBanner(msg, actionLabel, onAction) {
     const el = $('#status-banner');
     if (!el) return;
@@ -767,6 +793,7 @@
   function hideBanner() { const el = $('#status-banner'); if (el) el.hidden = true; }
 
   /* ================= events ================= */
+  // Attach all click, change and keyboard handlers once at startup.
   function wire() {
     /* topbar */
     $('#theme-toggle').addEventListener('click', () => {
@@ -830,6 +857,7 @@
     $('#skip-onb').addEventListener('click', () => go('#/browse'));
 
     /* plan */
+    // Workout screen controls: back, edit setup, shuffle and timer.
     $('#plan-back').addEventListener('click', () => openSetup(3));
     $('#change-goal').addEventListener('click', () => openSetup(1));
     $('#onb-back').addEventListener('click', () => {
@@ -866,6 +894,7 @@
     });
 
     /* browse controls */
+    // Search and filters update the library after a short pause.
     $('#search-input').addEventListener('input', e => {
       const v = e.target.value;
       $('#search-clear').hidden = !v;
@@ -898,6 +927,7 @@
     $('#clear-filters').addEventListener('click', clearFilters);
 
     /* session list interactions */
+    // Tick an exercise off and refresh the progress ring.
     $('#session-list').addEventListener('change', e => {
       const cb = e.target.closest('[data-check]');
       if (!cb) return;
@@ -911,6 +941,7 @@
     });
 
     /* sheet */
+    // Detail panel controls: close, retry detail, add to session.
     $('#sheet').addEventListener('click', e => {
       if (e.target.closest('.sheet-close')) { closeSheetAndBack(); return; }
       const retry = e.target.closest('[data-retry-detail]');
@@ -934,6 +965,7 @@
     });
 
     /* global delegation: open + favorite */
+    // One handler for every exercise card, wherever it appears.
     document.addEventListener('click', e => {
       const favBtn = e.target.closest('[data-fav]');
       if (favBtn) {
@@ -955,6 +987,7 @@
     });
 
     /* network status */
+    // Tell the user when the connection drops or comes back.
     window.addEventListener('offline', () => showBanner('You are offline — the app will use its local cache.'));
     window.addEventListener('online', () => { hideBanner(); UI.toast('Back online.', { type: 'success', timeout: 2500 }); });
 
@@ -967,6 +1000,7 @@
   }
 
   /* ================= init ================= */
+  // Start the app: restore state, wire events, check the API, then show a screen.
   function init() {
     loadPersisted();
 
