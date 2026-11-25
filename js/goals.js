@@ -1,22 +1,29 @@
 /* Pitchify — goal mapping & session engine
    ExerciseDB has no speed/stamina/strength/agility/flexibility taxonomy,
    so each goal maps to a small set of API queries (max 2 per goal),
-   merged, ranked and de-duplicated client-side. Documented in README. */
+   merged, ranked and de-duplicated client-side. Documented in README.
+
+   In plain terms: the API only knows body parts and muscles, not "speed" or
+   "agility". This file turns a football goal into real searches and then picks
+   a fair six-exercise session. */
 const Goals = (() => {
   'use strict';
 
+  // The three kit choices shown during setup.
   const EQUIPMENT = [
     { id: 'bodyweight', label: 'Bodyweight only', hint: 'No equipment needed', filter: 'bodyweight' },
     { id: 'freeweights', label: 'Free weights', hint: 'Barbell · dumbbell · kettlebell', filter: 'barbell,dumbbell,kettlebell' },
     { id: 'fullgym', label: 'Full gym', hint: 'Machines, cables & free weights', filter: '' },
   ];
 
+  // Experience levels and their labels.
   const LEVELS = [
     { id: 'beginner', label: 'Beginner', hint: 'New to training' },
     { id: 'intermediate', label: 'Intermediate', hint: 'Regular training' },
     { id: 'advanced', label: 'Advanced', hint: 'Competitive / high volume' },
   ];
 
+  // Each football goal becomes one or two API queries plus coaching advice.
   const GOALS = [
     {
       id: 'speed',
@@ -113,13 +120,16 @@ const Goals = (() => {
     },
   ];
 
+  // We need at least six exercises, and each daily session uses six.
   const MIN_POOL = 6;
   const SESSION_SIZE = 6;
 
+  // Small lookup helpers used by the rest of the app.
   function getGoal(id) { return GOALS.find(g => g.id === id) || null; }
   function getEquipment(id) { return EQUIPMENT.find(e => e.id === id) || null; }
   function getLevel(id) { return LEVELS.find(l => l.id === id) || null; }
 
+  // Rank exercises so the most relevant ones come first.
   function score(item, goal, equipment, priority) {
     const name = String(item.name || '');
     let s = 100 - priority * 10;
@@ -137,6 +147,9 @@ const Goals = (() => {
 
   /** Fetch, merge, rank and de-duplicate a goal's query plan.
    *  Relaxes the equipment filter if the pool is too small. */
+  // Ask the API for this goal's exercises, merge the pages and remove
+  // duplicates. If a strict equipment filter returns too little, try again
+  // without it.
   async function buildPlan(goalId, equipmentId) {
     const goal = getGoal(goalId);
     if (!goal) throw new Error('Unknown goal: ' + goalId);
@@ -144,6 +157,7 @@ const Goals = (() => {
 
     async function run(withEquipment) {
       const out = [];
+      // The first query matters; extra queries are allowed to fail.
       for (let i = 0; i < goal.queries.length; i++) {
         const q = Object.assign({}, goal.queries[i]);
         if (withEquipment && equipment && equipment.filter) q.equipments = equipment.filter;
@@ -173,6 +187,8 @@ const Goals = (() => {
   }
 
   /* ---------- deterministic daily session ---------- */
+  // A seeded generator makes the same day's session repeatable.
+  // Turn the seed text into a number the random generator can use.
   function hashSeed(str) {
     let h = 1779033703 ^ str.length;
     for (let i = 0; i < str.length; i++) {
@@ -181,6 +197,7 @@ const Goals = (() => {
     }
     return (h >>> 0);
   }
+  // Tiny random generator — same number in, same sequence out.
   function mulberry32(a) {
     return function () {
       a |= 0; a = (a + 0x6D2B79F5) | 0;
@@ -191,13 +208,14 @@ const Goals = (() => {
   }
 
   /** Pick SESSION_SIZE exercises, spreading body parts. Seeded → stable per day. */
+  // Pick six exercises, spreading them across different body parts.
   function pickSession(pool, seedStr, size) {
     const n = size || SESSION_SIZE;
     if (!pool || pool.length === 0) return [];
     const rnd = mulberry32(hashSeed(seedStr));
     const shuffled = pool.slice().sort(() => rnd() - 0.5);
 
-    // spread across body parts, round-robin
+    // Group by body part so the session is not six of the same movement.
     const buckets = new Map();
     for (const it of shuffled) {
       const key = (it.bodyParts && it.bodyParts[0]) || 'misc';
@@ -217,6 +235,7 @@ const Goals = (() => {
     return out;
   }
 
+  // Sets, reps and rest for this goal and level.
   function guidance(goalId, levelId) {
     const goal = getGoal(goalId);
     const level = getLevel(levelId) || { id: 'beginner' };
