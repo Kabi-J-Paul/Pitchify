@@ -1,27 +1,37 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
+  <!-- Basic page information for browsers and search engines -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Pitchify — football training plans built on the free ExerciseDB API. Speed, stamina, strength, agility and flexibility sessions for players.">
   <meta name="color-scheme" content="dark light">
   <title>Pitchify · Football training, mapped to your goal</title>
+
+  <!-- Load fonts and the exercise GIF host early so the page paints faster -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://static.exercisedb.dev" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+
   <!-- Exercise data: ExerciseDB V1 by AscendAPI — https://oss.exercisedb.dev/docs -->
+
+  <!-- Apply the saved theme before the page appears so it does not flash the wrong colour -->
   <script>try{var t=localStorage.getItem('pitchify:theme');if(!t)t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.dataset.theme=t;}catch(e){}</script>
+
+  <!-- Helpers load first, then the main app that uses them -->
   <script defer src="js/api.js"></script>
   <script defer src="js/goals.js"></script>
   <script defer src="js/ui.js"></script>
   <script defer src="js/app.js"></script>
 </head>
 <body>
+  <!-- Decorative texture behind the whole app -->
   <div class="grain" aria-hidden="true"></div>
 
+  <!-- Top bar: logo, page links and the theme switch -->
   <header class="topbar">
     <a class="brand" href="#/" aria-label="Pitchify home">
       <span class="brand-mark" aria-hidden="true">
@@ -33,11 +43,13 @@
       <span class="brand-word">PITCHIFY</span>
     </a>
 
+    <!-- Main navigation between the workout and the library -->
     <nav class="nav" aria-label="Primary">
       <a href="#/plan" data-nav="plan">Session</a>
       <a href="#/browse" data-nav="browse">Library</a>
     </nav>
 
+    <!-- Light/dark theme switch -->
     <div class="topbar-actions">
       <button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch theme" title="Switch theme">
         <svg class="i-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
@@ -46,13 +58,15 @@
     </div>
   </header>
 
-  <!-- connection / status banner -->
+  <!-- Status banner: shows offline or API problems, hidden when all is well -->
   <div id="status-banner" class="banner" hidden role="status"></div>
 
   <main id="main">
 
     <!-- ============ ONBOARDING ============ -->
+    <!-- First visit flow: choose a goal, the kit available, and experience level -->
     <section id="view-onboarding" class="view" hidden>
+      <!-- Two ways back: one step back in setup, or straight back to the workout -->
       <div class="onb-back-row">
         <button id="onb-back" class="back-btn" type="button" hidden>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -64,6 +78,7 @@
         </button>
       </div>
       <div class="hero">
+        <!-- Decorative pitch drawing in the background -->
         <div class="hero-art" aria-hidden="true">
           <svg class="pitch-lines" viewBox="0 0 800 420" preserveAspectRatio="xMidYMid slice">
             <defs>
@@ -91,6 +106,7 @@
           </svg>
         </div>
 
+        <!-- Short intro explaining what Pitchify does -->
         <div class="hero-copy reveal">
           <span class="eyebrow">FOOTBALL TRAINING · POWERED BY EXERCISEDB</span>
           <h1 class="display">Train the quality<br><em>your game needs.</em></h1>
@@ -98,7 +114,7 @@
             live exercise database — GIFs, step-by-step form guides and all.</p>
         </div>
 
-        <!-- step 1: goal -->
+        <!-- Step 1: choose the quality the player wants to improve -->
         <div class="onb-step reveal" data-step="1">
           <div class="step-head">
             <span class="step-num">01</span>
@@ -107,7 +123,7 @@
           <div id="goal-grid" class="goal-grid" role="listbox" aria-label="Training goal"></div>
         </div>
 
-        <!-- step 2: equipment -->
+        <!-- Step 2: say what equipment is available -->
         <div class="onb-step" data-step="2" hidden>
           <div class="step-head">
             <span class="step-num">02</span>
@@ -116,13 +132,14 @@
           <div id="equip-grid" class="choice-row" role="listbox" aria-label="Equipment"></div>
         </div>
 
-        <!-- step 3: level -->
+        <!-- Step 3: pick the experience level; this unlocks the build button -->
         <div class="onb-step" data-step="3" hidden>
           <div class="step-head">
             <span class="step-num">03</span>
             <h2>How experienced are you?</h2>
           </div>
           <div id="level-grid" class="choice-row" role="listbox" aria-label="Experience level"></div>
+          <!-- Build is disabled until all three answers are picked -->
           <div class="onb-actions">
             <button id="build-plan" class="btn btn-primary btn-lg" type="button" disabled>
               <span class="btn-label">Build my session</span>
@@ -131,6 +148,7 @@
           </div>
         </div>
 
+        <!-- The dots let the user jump back to an earlier step -->
         <div class="onb-progress" role="group" aria-label="Setup steps">
           <button class="dot is-on" type="button" data-dot="1" aria-label="Step 1: training goal" aria-current="step"></button>
           <button class="dot" type="button" data-dot="2" aria-label="Step 2: equipment"></button>
@@ -141,7 +159,9 @@
     </section>
 
     <!-- ============ PLAN / SESSION ============ -->
+    <!-- Today's workout, built from the answers chosen above -->
     <section id="view-plan" class="view" hidden>
+      <!-- Back from the workout goes straight to the experience level step -->
       <div class="plan-back-row">
         <button id="plan-back" class="back-btn" type="button" aria-label="Go back to the experience level step">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -152,6 +172,7 @@
         <div>
           <span class="eyebrow" id="plan-eyebrow">TODAY'S SESSION</span>
           <h1 class="display sm" id="plan-title">Your session</h1>
+          <!-- Small labels showing goal, equipment and level -->
           <div class="chip-row" id="plan-chips"></div>
         </div>
         <div class="view-head-actions">
@@ -165,6 +186,7 @@
 
       <div class="plan-layout">
         <aside class="plan-side">
+          <!-- Circle showing how many exercises are ticked off -->
           <div class="card panel progress-panel">
             <span class="panel-label">PROGRESS</span>
             <div class="ring" id="progress-ring" style="--p:0">
@@ -177,6 +199,7 @@
             <p class="muted" id="progress-copy">Tick exercises off as you complete them.</p>
           </div>
 
+          <!-- Simple rest timer with start, pause and reset -->
           <div class="card panel timer-panel">
             <span class="panel-label">REST TIMER</span>
             <div class="timer-display" id="timer-display">0:60</div>
@@ -187,6 +210,7 @@
             <p class="muted small" id="timer-hint">Suggested rest for this goal.</p>
           </div>
 
+          <!-- Coaching advice for this goal and level -->
           <div class="card panel coach-panel">
             <span class="panel-label">COACH NOTES</span>
             <ul class="coach-list" id="coach-list"></ul>
@@ -194,16 +218,20 @@
         </aside>
 
         <div class="plan-main">
+          <!-- The exercises for today; JavaScript fills this in -->
           <div id="session-list" class="session-list" aria-live="polite"></div>
+          <!-- Shown when there is no saved session yet -->
           <div id="session-empty" class="empty" hidden>
             <h3>No session yet</h3>
             <p class="muted">Build one from your goal, or open the library.</p>
             <button class="btn btn-primary" data-action="goto-onboarding" type="button">Set up my goal</button>
           </div>
+          <!-- Shown only after every exercise is ticked off -->
           <div id="session-complete" class="card panel complete-panel" hidden>
             <span class="complete-icon" aria-hidden="true">✓</span>
             <h3>Session complete</h3>
             <p class="muted" id="complete-copy">All exercises ticked off — great work. Want to tweak your plan before next time?</p>
+            <!-- Each button reopens setup at a different step -->
             <div class="complete-actions">
               <button class="btn btn-ghost complete-btn" type="button" data-change="level">
                 <span class="cb-title">Change difficulty</span>
@@ -224,6 +252,7 @@
     </section>
 
     <!-- ============ BROWSE / LIBRARY ============ -->
+    <!-- Searchable list of every exercise from the API -->
     <section id="view-browse" class="view" hidden>
       <div class="view-head reveal">
         <div>
@@ -234,14 +263,17 @@
       </div>
 
       <div class="filters card panel">
+        <!-- Live search; JavaScript waits a moment before calling the API -->
         <div class="filter search-filter">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
           <input id="search-input" type="search" placeholder="Search exercises…" aria-label="Search exercises" autocomplete="off">
           <button id="search-clear" class="icon-btn sm" type="button" aria-label="Clear search" hidden>×</button>
         </div>
 
+        <!-- Quick shortcuts for the five football goals -->
         <div class="filter-chips" id="goal-chips" aria-label="Quick goal filter"></div>
 
+        <!-- Drop-down filters and the favourites switch -->
         <div class="filter-row">
           <label class="select-wrap">
             <span>Body part</span>
@@ -272,37 +304,42 @@
         </div>
       </div>
 
+      <!-- Results summary and the grid of exercise cards -->
       <div id="browse-status" class="browse-status muted" role="status"></div>
       <div id="exercise-grid" class="grid" aria-live="polite"></div>
 
+      <!-- Shown when nothing matches the filters -->
       <div id="browse-empty" class="empty" hidden>
         <h3>Nothing matched</h3>
         <p class="muted">Try a different search, or relax the filters.</p>
         <button class="btn btn-ghost" id="clear-filters" type="button">Clear filters</button>
       </div>
 
+      <!-- Pagination button, hidden until there are more results -->
       <div class="load-more-wrap">
         <button id="load-more" class="btn btn-ghost" type="button" hidden>Load more exercises</button>
       </div>
     </section>
 
     <!-- ============ DETAIL ============ -->
+    <!-- Full-page detail view, filled when an exercise is opened -->
     <section id="view-detail" class="view" hidden>
       <div id="detail-body" aria-live="polite"></div>
     </section>
   </main>
 
+  <!-- Footer only appears when served through the load balancer -->
   <footer id="site-footer" class="footer" hidden>
     <div class="footer-inner">
       <span id="served-by" class="served"></span>
     </div>
   </footer>
 
-  <!-- exercise detail sheet -->
+  <!-- Pop-up panel with the exercise GIF, steps and related moves -->
   <div id="sheet-backdrop" class="sheet-backdrop" hidden></div>
   <div id="sheet" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title"></div>
 
-  <!-- toasts -->
+  <!-- Short messages that appear after actions like saving a favourite -->
   <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
 </body>
 </html>
