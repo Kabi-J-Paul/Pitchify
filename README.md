@@ -138,18 +138,18 @@ Repeat both steps on `web-02`.
 **5. Verify traffic is balanced:**
 
 ```bash
-for i in 1 2 3 4; do curl -sI http://35.177.216.237/ | grep -i x-served-by; done
+for i in 1 2 3 4; do curl -sI https://kpaul.tech/ | grep -i x-served-by; done
 # → 7308-web-01, 7308-web-02, 7308-web-01, 7308-web-02  (alternating)
 ```
 
-### Firewall rules (UFW) — to apply
+### Firewall rules (UFW) — applied
 
 | Server | Rules |
 |---|---|
 | `web-01`, `web-02` | `allow 22/tcp` (SSH), `allow from 35.177.216.237 to any port 80` (LB only) — everything else denied |
 | `lb-01` | `allow 22/tcp`, `allow 80/tcp`, `allow 443/tcp` — everything else denied |
 
-Apply the SSH rule first so you do not lock yourself out. Once applied, web servers are **not directly reachable from the internet** — only the load balancer can talk to them.
+The SSH rule was added first to avoid lockout. Verified: `https://kpaul.tech` returns `200`, `X-Served-By` alternates between `7308-web-01` and `7308-web-02`, and direct requests to the web servers' public IPs time out.
 
 ---
 
