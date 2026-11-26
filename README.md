@@ -4,7 +4,7 @@
 > Pick a goal, get a real 6-exercise session with rest timers, tutorials and a searchable library — no signup, no API key, no backend.
 
 **Live site:** https://kpaul.tech (load balancer → `7308-web-01` / `7308-web-02`)
-**Demo video :** my video
+**Demo video :** https://youtu.be/pjhWQnHeUMg
 
 ---
 
